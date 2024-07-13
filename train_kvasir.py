@@ -18,6 +18,9 @@ from utils.dataloader import get_loader,test_dataset
 
 train_img_dir = '../DS-TransUNet/data/Kvasir_SEG_Training_880/image/'
 train_mask_dir = '../DS-TransUNet/data/Kvasir_SEG_Training_880/mask/'
+
+
+
 val_img_dir = '../DS-TransUNet/data/Kvasir_SEG_Validation_120/images/'
 val_mask_dir = '../DS-TransUNet/data/Kvasir_SEG_Validation_120/masks/'
 dir_checkpoint = './checkpoints/'
