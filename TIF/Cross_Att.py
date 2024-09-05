@@ -12,7 +12,7 @@ class Transformer(nn.Module):
                 PreNorm(dim, Attention(dim, heads = heads, dim_head = dim_head, dropout = dropout)),
                 PreNorm(dim, FeedForward(dim, mlp_dim, dropout = dropout))
             ]))
-    def forward(self, x):
+    def forward(self, x): # [batch_size, total_patches_num_r+1, dim_s] or [batch_size, total_patches_num_e+1, dim_l]
         for attn, ff in self.layers:
             x = attn(x) + x
             x = ff(x) + x
@@ -27,7 +27,8 @@ class Cross_Att(nn.Module):
         self.norm_s = nn.LayerNorm(dim_s)
         self.norm_l = nn.LayerNorm(dim_l)
         self.avgpool = nn.AdaptiveAvgPool1d(1) # 池化层，将每个通道的宽度缩减到1
-        self.linear_s = nn.Linear(dim_s, dim_l) # 维度互换
+        # 以下两个线性层用于维度互换
+        self.linear_s = nn.Linear(dim_s, dim_l) 
         self.linear_l = nn.Linear(dim_l, dim_s)
 
     def forward(self, e, r):

@@ -18,7 +18,7 @@ def dice_coeff(pred, gt, smooth=1, activation='sigmoid'):
     else:
         raise NotImplementedError("Activation implemented for sigmoid and softmax2d activation function operation")
 
-    #pred = activation_fn(pred)
+    # pred = activation_fn(pred)
 
     N = gt.size(0)
     pred_flat = pred.view(N, -1)
@@ -39,7 +39,7 @@ def eval_net(net, loader, device, n_class=1):
     n_val = len(loader) 
     N = 0
 
-    with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
+    with tqdm(total=n_val, ncols=100, desc='Validation round', unit='batch', leave=False) as pbar:
         for batch in loader:
             imgs, true_masks = batch
             imgs = imgs.to(device=device, dtype=torch.float32)
@@ -47,7 +47,7 @@ def eval_net(net, loader, device, n_class=1):
 
             mask_pred, _, _ = net(imgs)
 
-            if n_class > 1:
+            if n_class > 1: # 不会走到这里来 n_class = 1
                 tot += F.cross_entropy(mask_pred, true_masks).item()
             else:
                 pred = torch.sigmoid(mask_pred)

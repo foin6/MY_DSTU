@@ -50,7 +50,7 @@ class PatchMerging(nn.Module):
         self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
         self.norm = norm_layer(4 * dim)
 
-    def forward(self, x, H, W):
+    def forward(self, x, H, W): # [batch_size, patches_num, dim]
         """ Forward function.
         Args:
             x: Input feature, tensor size (B, H*W, C).
@@ -59,7 +59,7 @@ class PatchMerging(nn.Module):
         B, L, C = x.shape
         assert L == H * W, "input feature has wrong size"
 
-        x = x.view(B, H, W, C)
+        x = x.view(B, H, W, C) # [batch_size, H, W, dim]
 
         # padding
         pad_input = (H % 2 == 1) or (W % 2 == 1)
@@ -319,7 +319,7 @@ class BasicLayer(nn.Module): # 这就是一个stage
             else:
                 Wh, Ww = H*2, W*2
             return x, H, W, x_down, Wh, Ww
-        else: # encoder的最后一个stage不需要PatchMerge
+        else: # encoder的最后一个stage不需要PatchMerge，encode也都走这个判断
             return x, H, W, x, H, W
 
 
@@ -357,7 +357,7 @@ class SwinTransformer(nn.Module):
 
         # build layers
         self.layers = nn.ModuleList()
-        for i_layer in range(self.num_layers): # 每个layer是一个stage，每个stage中包含多个W-MSA和SW-MSA
+        for i_layer in range(self.num_layers): # 一个layer是一个stage，每个stage中包含多个W-MSA和SW-MSA
             layer = BasicLayer( # 这就是一个stage
                 dim=int(embed_dim * 2 ** i_layer), # 越深处的stage模型的维度越大，因为经过Patch Merging之后特征图会逐渐变小，增加维度是一种补偿方式
                 depth=depths[i_layer], # 在第i个stage中W-MSA和SW-MSA共有depths[i_layer]个
@@ -431,7 +431,7 @@ class SwinTransformer(nn.Module):
             absolute_pos_embed = F.interpolate(self.absolute_pos_embed, size=(Wh, Ww), mode='bicubic') # 使用双三次插值调整self.absolute_pos_embed的shape，使其能与x相加
             x = (x + absolute_pos_embed).flatten(2).transpose(1, 2)  # [batch_size, total_patches_num, embed_dim]
         else:
-            x = x.flatten(2).transpose(1, 2) # [batch_size, total_patches_num, embed_dim]
+            x = x.flatten(2).transpose(1, 2) # [batch_size, total_patches_num, embed_dim] # 进入Swin前进行shape的转变
         x = self.pos_drop(x) # dropout层
 
         outs = []

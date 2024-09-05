@@ -14,7 +14,8 @@ from UNet import UNet
 
 from torch.utils.data import DataLoader, random_split
 from utils.dataloader import get_loader,test_dataset
-from PIL import Image
+from utils.eval import dice_coeff
+from PIL import Image, ImageDraw, ImageFont
 
 pred_path = './output/HGG/pred/'
 gt_path = './output/HGG/gt/'
@@ -24,10 +25,12 @@ def eval_net(net, loader, device, n_class=1):
     net.eval() # 启动模型的评估模式
     mask_type = torch.float32 if n_class == 1 else torch.long
     n_val = len(loader)
-    pred_idx=0
-    gt_idx=0
+    pred_idx = 0
+    gt_idx = 0
+    img_idx = 0
+    flag = False
 
-    with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
+    with tqdm(total=n_val, desc='Validation round', ncols=100, unit='batch', leave=False) as pbar:
         for batch in loader:
             imgs, true_masks = batch
             imgs = imgs.to(device=device, dtype=torch.float32)
@@ -36,11 +39,34 @@ def eval_net(net, loader, device, n_class=1):
             mask_pred, _, _ = net(imgs)
             pred = torch.sigmoid(mask_pred)
             pred = (pred > 0.5).float() # 这样子拿到mask，设一个阈值
-            for img in pred:
+            for i in range(pred.shape[0]): # 按batch取出图像
+                flag = False # dice系数未达要求
+                img = pred[i]
+                mask = true_masks[i]
+                # calculate the dice coefficient
+                total_dice, n = dice_coeff(pred, true_masks)
+                dice = total_dice / n
+                if dice < 0.95 or dice > 1.0:
+                    pred_idx += 1
+                    continue
                 img = img.squeeze(0).cpu().numpy()
                 img = Image.fromarray((img * 255).astype(np.uint8))
+                # 右下角写入文本
+                draw = ImageDraw.Draw(img)
+                font = ImageFont.load_default()
+                width, height = img.size
+                text = "Dice: {:.3f}".format(dice.cpu())
+                text_bbox = draw.textbbox((0, 0), text, font)
+                text_width = text_bbox[2] - text_bbox[0]
+                text_height = text_bbox[3] - text_bbox[1]
+                position = (width - text_width - 10, height - text_height - 10)
+                draw.text(position, text, font=font, fill=255)
+                # 保存
+                print(img.size)
+                exit()
                 img.save(pred_path+'/'+str(pred_idx)+'.png')
                 pred_idx += 1
+                
             for img in true_masks:
                 img = img.squeeze(0).cpu().numpy()
                 img = Image.fromarray((img * 255).astype(np.uint8))
@@ -60,7 +86,7 @@ def test_net(net,
     val_img_dir = './dataset/BraTS/HGG_val_images/'
     val_mask_dir = './dataset/BraTS/HGG_val_masks/'
 
-    val_loader = get_loader(val_img_dir, val_mask_dir, batchsize=batch_size, trainsize=img_size, augmentation = False) # 这里实际上已经把images和mask的大小改成512×512了，并且不进行图像增强操作
+    val_loader = get_loader(val_img_dir, val_mask_dir, batchsize=batch_size, trainsize=img_size, shuffle=False, augmentation = False) # 这里实际上已经把images和mask的大小改成512×512了，并且不进行图像增强操作
     net.eval()
 
     eval_net(net, val_loader, device)

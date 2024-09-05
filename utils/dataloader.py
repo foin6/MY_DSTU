@@ -6,19 +6,17 @@ import numpy as np
 import random
 import torch
 
-
-class PolypDataset(data.Dataset):
+class BraTSDataset(data.Dataset):
     """
-    dataloader for polyp segmentation tasks （息肉分割任务）
+    dataloader for brain tumor segmentation tasks
     """
     def __init__(self, image_root, gt_root, trainsize, augmentations):
         self.trainsize = trainsize
         self.augmentations = augmentations
-        print(self.augmentations)
-        self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg') or f.endswith('.png')]
+        self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg') or f.endswith('.png')] # 列表，保存路径
         self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.png')]
-        self.images = sorted(self.images)
-        self.gts = sorted(self.gts)
+        # self.images = sorted(self.images)
+        # self.gts = sorted(self.gts)
         self.filter_files()
         self.size = len(self.images)
         if self.augmentations == True: # 数据增强
@@ -107,9 +105,9 @@ class PolypDataset(data.Dataset):
         return self.size
 
 
-def get_loader(image_root, gt_root, batchsize, trainsize, shuffle=True, num_workers=4, pin_memory=True, augmentation=False):
+def get_loader(image_root, gt_root, batchsize, trainsize, shuffle, num_workers=4, pin_memory=True, augmentation=False):
 
-    dataset = PolypDataset(image_root, gt_root, trainsize, augmentation)
+    dataset = BraTSDataset(image_root, gt_root, trainsize, augmentation)
     data_loader = data.DataLoader(dataset=dataset,
                                   batch_size=batchsize,
                                   shuffle=shuffle,

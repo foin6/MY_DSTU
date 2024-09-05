@@ -75,8 +75,8 @@ class UNet(nn.Module):
             nn.ReLU(),
             nn.Upsample(scale_factor=4)
         )
-        dim_s = 96 # patch_size大的
-        dim_l = 128 # patch_size小的
+        dim_s = 96 # path_size是8×8的初始dim
+        dim_l = 128 # patch_size是4×4的初始dim
         self.m1 = nn.Upsample(scale_factor=2) # 将特征图的H和W扩展为原来的2倍，dim不变
         self.m2 = nn.Upsample(scale_factor=4)
         tb = dim_s + dim_l
@@ -91,11 +91,13 @@ class UNet(nn.Module):
 
     def forward(self, x): # x.shape=[batch_size, 3, H, W]
         # 以下两个encoder是处理不同scale图像的encoder
-        out = self.encoder(x)
-        out2 = self.encoder2(x)
+        print("Start Encoding ...")
+        out = self.encoder(x) # 这是patch_size是4×4、dim=128的那一层encoder
+        out2 = self.encoder2(x) # 这是patch_size是8×8、dim=96的那一层encoder
         e1, e2, e3, e4 = out[0], out[1], out[2], out[3]  # 4级编码器的输出
         r1, r2, r3, r4 = out2[0], out2[1], out2[2], out2[3]
         # TIF的过程
+        print("TIF Processing ...")
         e1, r1 = self.cross_att_1(e1, r1) # [batch_size, dim_l, Wh_e, Ww_e]，[batch_size, dim_s, Wh_r, Ww_r]
         e2, r2 = self.cross_att_2(e2, r2) # [batch_size, dim_l*2, Wh_e//2, Ww_e//2]，[batch_size, dim_s*2, Wh_r//2, Ww_r//2]
         e3, r3 = self.cross_att_3(e3, r3) # [batch_size, dim_l*4, Wh_e//4, Ww_e//4]，[batch_size, dim_s*4, Wh_r//4, Ww_r//4]
@@ -110,10 +112,11 @@ class UNet(nn.Module):
         e4 = self.change4(e4) # [batch_size, model_dim*8, Wh_e//8, Ww_e//8]
         loss1 = self.loss1(e4) # [batch_size, 1, Wh_e//8*32, Ww_e//8*32] # 图像的高宽变成原图的大小
 
-        ds1 = self.down1(x) # [batch_size, model_dim//4, H, W]
+        ds1 = self.down1(x) # [batch_size, model_dim//4, H, W] # 原图大小，维度从3变成model_dim/4
         ds2 = self.down2(ds1) # [batch_size, model_dim//2, H//2, W//2]
 
         # Decoder部分
+        print("Start Decoding ...")
         d1 = self.layer1(e4, e3) # [batch_size, model_dim*4, Wh_e//4, Ww_e//4]
         d2 = self.layer2(d1, e2) # [batch_size, model_dim*2, Wh_e//2, Ww_e//2]
         d3 = self.layer3(d2, e1) # [batch_size, model_dim, Wh_e, Ww_e]  Wh_e = H//4 Ww_e = W//4
@@ -121,13 +124,15 @@ class UNet(nn.Module):
         d4 = self.layer4(d3, ds2) # [batch_size, model_dim//2, H//2, W//2]
         d5 = self.layer5(d4, ds1) # [batch_size, model_dim//4, H, W]
         o = self.final(d5) # 输出灰度图像 [batch_size, 1, H, W]
-        return o, loss1, loss2 # shape全是[batch_size, 1, H, W]
+        return o, loss1, loss2 # shape全是[batch_size, 1, H, W] # 这三个输出在training中是要用于计算loss值的
 
 if __name__ == '__main__':
     print('#### Test Case ###')
     from torch.autograd import Variable
     x = Variable(torch.rand(1, 3, 512, 512)).cuda()
     model = UNet(128, 1).cuda()
+    total_param_num = sum(p.numel() for p in model.parameters() if p.requires_grad)  # 模型中的全部参数量
+    print("{0} parameters to be trained in total".format(total_param_num))  # 查看可训练的参数量
     print("Input shape:", x.shape)
     y = model(x)
     print('Output shape:',y[-1].shape)
