@@ -1,8 +1,15 @@
+import sys
+sys.path.append('/home/zixuwang/MyProjs/Segmentation/MY_DSTU/')
+sys.path.append('/home/zixuwang/MyProjs/Segmentation/MY_DSTU/Decoders')
+sys.path.append('/home/zixuwang/MyProjs/Segmentation/MY_DSTU/VRWKV')
+sys.path.append('/home/zixuwang/MyProjs/Segmentation/MY_DSTU/TIF')
+
 import torch
 import torch.nn as nn
 
-from SwinTrans.SwinTransformer import SwinTransformer
-from Decoders import Swin_Decoder, Decoder
+from VRWKV.vrwkv_encoder import Encoder
+from VRWKV.vrwkv_decoder import VRWKV_Decoder
+from Decoders import Decoder
 from TIF import Cross_Att
 
 groups = 32
@@ -48,14 +55,14 @@ class UNet(nn.Module):
     def __init__(self, dim, n_class, in_ch=3):
         super(UNet, self).__init__()
         # encoder 部分
-        self.encoder = SwinTransformer(depths=[2, 2, 18, 2], num_heads=[4, 8, 16, 32], drop_path_rate=0.5, embed_dim=128)
-        self.encoder2 = SwinTransformer(depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24], drop_path_rate=0.2, patch_size=8, embed_dim=96)
-        self.encoder.init_weights('../DS-TransUNet/Swin-Transformer/swin_base_patch4_window7_224_22k.pth')
-        self.encoder2.init_weights('../DS-TransUNet/Swin-Transformer/swin_tiny_patch4_window7_224.pth')
+        self.encoder = Encoder(depths=[2, 2, 18, 2], drop_path_rate=0.5, embed_dim=128)
+        self.encoder2 = Encoder(depths=[2, 2, 6, 2], drop_path_rate=0.2, patch_size=8, embed_dim=96)
+        # self.encoder.init_weights('../DS-TransUNet/Swin-Transformer/swin_base_patch4_window7_224_22k.pth')
+        # self.encoder2.init_weights('../DS-TransUNet/Swin-Transformer/swin_tiny_patch4_window7_224.pth')
         # Decoder部分
-        self.layer1 = Swin_Decoder.Swin_Decoder(8 * dim, 2, 8) # (in_channels, depths, num_heads) 1024
-        self.layer2 = Swin_Decoder.Swin_Decoder(4 * dim, 2, 4) # 512
-        self.layer3 = Swin_Decoder.Swin_Decoder(2 * dim, 2, 2) # 256
+        self.layer1 = VRWKV_Decoder(8 * dim, 2) # (in_channels, depths) 1024
+        self.layer2 = VRWKV_Decoder(4 * dim, 2) # 512
+        self.layer3 = VRWKV_Decoder(2 * dim, 2) # 256
         self.layer4 = Decoder.Decoder(dim, dim, dim // 2)
         self.layer5 = Decoder.Decoder(dim // 2, dim // 2, dim // 4)
         # 其他部分
@@ -89,7 +96,7 @@ class UNet(nn.Module):
         self.cross_att_3 = Cross_Att.Cross_Att(dim_s * 4, dim_l * 4)
         self.cross_att_4 = Cross_Att.Cross_Att(dim_s * 8, dim_l * 8)
 
-    def forward(self, x): # x.shape=[batch_size, 3, H, W]
+    def forward(self, x): # x.shape=[batch_size, 3, H, W] # 直接输入的是原始图像
         # 以下两个encoder是处理不同scale图像的encoder
         print("Start Encoding ...")
         out = self.encoder(x) # 这是patch_size是4×4、dim=128的那一层encoder

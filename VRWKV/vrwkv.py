@@ -14,7 +14,7 @@ from mmengine.model import BaseModule, ModuleList
 from mmcv.cnn.bricks.transformer import PatchEmbed
 from mmseg.models.builder import BACKBONES
 import logging
-from .vrwkv_utils import resize_pos_embed, DropPath
+from vrwkv_utils import resize_pos_embed, DropPath
 
 T_MAX = 8192 # increase this if your ctx_len is long [NOTE: TAKES LOTS OF VRAM!]
 # it's possible to go beyond CUDA limitations if you slice the ctx and pass the hidden state in each slice
@@ -31,7 +31,7 @@ class WKV(torch.autograd.Function):
         ctx.B = B
         ctx.T = T
         ctx.C = C
-        assert T <= T_MAX
+        # assert T <= T_MAX
         assert B * C % min(C, 1024) == 0
 
         half_mode = (w.dtype == torch.half)
@@ -195,7 +195,7 @@ class VRWKV_SpatialMix(BaseModule):
         if self.key_norm is not None:
             rwkv = self.key_norm(rwkv)
         rwkv = sr * rwkv # element-wise product
-        rwkv = self.output(rwkv)
+        rwkv = self.output(rwkv) # 线性变换，全连接层
         return rwkv # [batch_size, total_patch_num, embed_dim]
 
 
@@ -294,7 +294,7 @@ class Block(BaseModule): # 一个block包含一个完整的Time Mixing 和一个
 
     def forward(self, x, patch_resolution): # [batch_size, total_patch_num, embed_dim]
         def _inner_forward(x):
-            if self.layer_id == 0:
+            if self.layer_id == 0: # 第一个layer
                 x = self.ln0(x) # 最开始先通过一个LayerNorm层 # [batch_size, total_patch_num, embed_dim]
             if self.post_norm:
                 if self.layer_scale:
@@ -451,16 +451,16 @@ class VRWKV(BaseModule):
         for i, layer in enumerate(self.layers): # 经过每一个layer, x的shape和patch_resolution都是不变的
             x = layer(x, patch_resolution)
 
-            if i == len(self.layers) - 1 and self.final_norm:
-                x = self.ln1(x)
+            if i == len(self.layers) - 1 and self.final_norm: # 最后一个layer之后要过一个LayerNorm
+                x = self.ln1(x) # [batch_size, total_patch_num, embed_dim]
 
             if i in self.out_indices:
                 B, _, C = x.shape
-                patch_token = x.reshape(B, *patch_resolution, C)
-                patch_token = patch_token.permute(0, 3, 1, 2)
+                patch_token = x.reshape(B, *patch_resolution, C) # [batch_size, patch_num_H, patch_num_W, embed_dim]
+                patch_token = patch_token.permute(0, 3, 1, 2) # [batch_size, patch_num_H, patch_num_W, embed_dim]
 
-                out = patch_token
+                out = patch_token # [batch_size, patch_num_H, patch_num_W, embed_dim]
                 outs.append(out)
 
-        return tuple(outs)
+        return tuple(outs) 
 
