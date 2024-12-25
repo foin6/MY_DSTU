@@ -1,3 +1,7 @@
+import sys
+sys.path.append('/home/zixuwang/MyProjs/Segmentation/MY_DSTU/')
+sys.path.append('/home/zixuwang/MyProjs/Segmentation/MY_DSTU/VRWKV')
+sys.path.append('/home/zixuwang/MyProjs/Segmentation/MY_DSTU/VRWKV/vrwkv_utils')
 # Copyright (c) OpenMMLab. All rights reserved.
 from typing import Sequence
 import warnings
@@ -52,7 +56,7 @@ class WKV(torch.autograd.Function):
         B = ctx.B
         T = ctx.T
         C = ctx.C
-        assert T <= T_MAX
+        # assert T <= T_MAX
         assert B * C % min(C, 1024) == 0
         w, u, k, v = ctx.saved_tensors
         gw = torch.zeros((B, C), device='cuda').contiguous()
@@ -457,9 +461,9 @@ class VRWKV(BaseModule):
             if i in self.out_indices:
                 B, _, C = x.shape
                 patch_token = x.reshape(B, *patch_resolution, C) # [batch_size, patch_num_H, patch_num_W, embed_dim]
-                patch_token = patch_token.permute(0, 3, 1, 2) # [batch_size, patch_num_H, patch_num_W, embed_dim]
+                patch_token = patch_token.permute(0, 3, 1, 2) # [batch_size, embed_dim, patch_num_H, patch_num_W]
 
-                out = patch_token # [batch_size, patch_num_H, patch_num_W, embed_dim]
+                out = patch_token # [batch_size, embed_dim, patch_num_H, patch_num_W]
                 outs.append(out)
 
         return tuple(outs) 
