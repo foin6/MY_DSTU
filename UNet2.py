@@ -138,7 +138,7 @@ class UNet(nn.Module):
 if __name__ == '__main__':
     print('#### Test Case ###')
     from torch.autograd import Variable
-    x = Variable(torch.rand(1, 3, 512, 512)).cuda()
+    x = Variable(torch.rand(1, 3, 384, 384)).cuda()
     model = UNet(128, 1).cuda()
     total_param_num = sum(p.numel() for p in model.parameters() if p.requires_grad)  # 模型中的全部参数量
     print("{0} parameters to be trained in total".format(total_param_num))  # 查看可训练的参数量
