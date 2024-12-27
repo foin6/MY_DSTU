@@ -50,8 +50,8 @@ class UNet(nn.Module):
         # encoder 部分
         self.encoder = SwinTransformer(depths=[2, 2, 18, 2], num_heads=[4, 8, 16, 32], drop_path_rate=0.5, embed_dim=128)
         self.encoder2 = SwinTransformer(depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24], drop_path_rate=0.2, patch_size=8, embed_dim=96)
-        self.encoder.init_weights('../DS-TransUNet/Swin-Transformer/swin_base_patch4_window7_224_22k.pth')
-        self.encoder2.init_weights('../DS-TransUNet/Swin-Transformer/swin_tiny_patch4_window7_224.pth')
+        # self.encoder.init_weights('../DS-TransUNet/Swin-Transformer/swin_base_patch4_window7_224_22k.pth')
+        # self.encoder2.init_weights('../DS-TransUNet/Swin-Transformer/swin_tiny_patch4_window7_224.pth')
         # Decoder部分
         self.layer1 = Swin_Decoder.Swin_Decoder(8 * dim, 2, 8) # (in_channels, depths, num_heads) 1024
         self.layer2 = Swin_Decoder.Swin_Decoder(4 * dim, 2, 4) # 512
@@ -91,13 +91,13 @@ class UNet(nn.Module):
 
     def forward(self, x): # x.shape=[batch_size, 3, H, W]
         # 以下两个encoder是处理不同scale图像的encoder
-        print("Start Encoding ...")
+        # print("Start Encoding ...")
         out = self.encoder(x) # 这是patch_size是4×4、dim=128的那一层encoder
         out2 = self.encoder2(x) # 这是patch_size是8×8、dim=96的那一层encoder
         e1, e2, e3, e4 = out[0], out[1], out[2], out[3]  # 4级编码器的输出
         r1, r2, r3, r4 = out2[0], out2[1], out2[2], out2[3]
         # TIF的过程
-        print("TIF Processing ...")
+        # print("TIF Processing ...")
         e1, r1 = self.cross_att_1(e1, r1) # [batch_size, dim_l, Wh_e, Ww_e]，[batch_size, dim_s, Wh_r, Ww_r]
         e2, r2 = self.cross_att_2(e2, r2) # [batch_size, dim_l*2, Wh_e//2, Ww_e//2]，[batch_size, dim_s*2, Wh_r//2, Ww_r//2]
         e3, r3 = self.cross_att_3(e3, r3) # [batch_size, dim_l*4, Wh_e//4, Ww_e//4]，[batch_size, dim_s*4, Wh_r//4, Ww_r//4]
@@ -116,7 +116,7 @@ class UNet(nn.Module):
         ds2 = self.down2(ds1) # [batch_size, model_dim//2, H//2, W//2]
 
         # Decoder部分
-        print("Start Decoding ...")
+        # print("Start Decoding ...")
         d1 = self.layer1(e4, e3) # [batch_size, model_dim*4, Wh_e//4, Ww_e//4]
         d2 = self.layer2(d1, e2) # [batch_size, model_dim*2, Wh_e//2, Ww_e//2]
         d3 = self.layer3(d2, e1) # [batch_size, model_dim, Wh_e, Ww_e]  Wh_e = H//4 Ww_e = W//4
