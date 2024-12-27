@@ -17,8 +17,8 @@ from utils.dataloader import get_loader,test_dataset
 from utils.eval import dice_coeff
 from PIL import Image, ImageDraw, ImageFont
 
-pred_path = './output/HGG/pred/'
-gt_path = './output/HGG/gt/'
+pred_path = 'path/to/the/dictionary/of/predict/results'
+gt_path = 'path/to/the/dictionary/of/ground/truth'
 
 def eval_net(net, loader, device, n_class=1):
     """Evaluation without the densecrf with the dice coefficient"""
@@ -61,9 +61,9 @@ def eval_net(net, loader, device, n_class=1):
                 text_height = text_bbox[3] - text_bbox[1]
                 position = (width - text_width - 10, height - text_height - 10)
                 draw.text(position, text, font=font, fill=255)
-                # 保存
-                print(img.size)
-                exit()
+                # # 保存
+                # print(img.size)
+                # exit()
                 img.save(pred_path+'/'+str(pred_idx)+'.png')
                 pred_idx += 1
                 
@@ -95,11 +95,11 @@ def test_net(net,
 def get_args():
     parser = argparse.ArgumentParser(description='Train the model on images and target masks',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=2,
+    parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=4,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-f', '--load', dest='load', type=str, default='./checkpoints/BraTS/epoch:30_dice:85.444.pth',
+    parser.add_argument('-f', '--load', dest='load', type=str, default=None,
                         help='Load model from a .pth file')
-    parser.add_argument('-s', '--img_size', dest='size', type=int, default=512,
+    parser.add_argument('-s', '--img_size', dest='size', type=int, default=384,
                         help='The size of the images')
 
     return parser.parse_args()
