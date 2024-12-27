@@ -105,7 +105,7 @@ class BraTSDataset(data.Dataset):
         return self.size
 
 
-def get_loader(image_root, gt_root, batchsize, trainsize, shuffle, num_workers=4, pin_memory=True, augmentation=False):
+def get_loader(image_root, gt_root, batchsize, trainsize, shuffle=True, num_workers=4, pin_memory=True, augmentation=False):
 
     dataset = BraTSDataset(image_root, gt_root, trainsize, augmentation)
     data_loader = data.DataLoader(dataset=dataset,
