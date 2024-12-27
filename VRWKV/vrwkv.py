@@ -425,9 +425,10 @@ class VRWKV(BaseModule):
     def init_weights(self):
         logger = logging.getLogger()
         if self.init_cfg is None:
-            logger.warn(f'No pre-trained weights for '
-                        f'{self.__class__.__name__}, '
-                        f'training start from scratch')
+            # logger.warn(f'No pre-trained weights for '
+            #             f'{self.__class__.__name__}, '
+            #             f'training start from scratch')
+            pass
         else:
             assert 'checkpoint' in self.init_cfg, f'Only support ' \
                                                   f'specify `Pretrained` in ' \
