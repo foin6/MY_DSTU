@@ -1,3 +1,6 @@
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+
 import argparse
 import logging
 import os
@@ -20,7 +23,7 @@ train_img_dir = './dataset/BraTS/HGG_images/'
 train_mask_dir = './dataset/BraTS/HGG_masks/'
 val_img_dir = './dataset/BraTS/HGG_val_images/'
 val_mask_dir = './dataset/BraTS/HGG_val_masks/'
-dir_checkpoint = './checkpoints/BraTS/'
+dir_checkpoint = 'path/to/checkpoints/dictionary'
 
 
 def get_logger(filename, verbosity=1, name=None):
@@ -70,16 +73,16 @@ def adjust_lr(optimizer, init_lr, epoch, decay_rate=0.1, decay_epoch=30):
 
 
 def train_net(net, device, epochs=500, batch_size=1, lr=0.01, save_cp=True, n_class=1, img_size=512):
-    train_loader = get_loader(train_img_dir, train_mask_dir, batchsize=batch_size, trainsize=img_size, augmentation = False)
-    val_loader = get_loader(val_img_dir, val_mask_dir, batchsize=1, trainsize=img_size, augmentation = False)
-    print(val_loader.shape)
-    exit()
+    train_loader = get_loader(train_img_dir, train_mask_dir, batchsize=batch_size, trainsize=img_size, augmentation=False)
+    val_loader = get_loader(val_img_dir, val_mask_dir, batchsize=4, trainsize=img_size, augmentation=False)
 
+    total_param_num = sum(p.numel() for p in net.parameters() if p.requires_grad)  # 模型中的全部参数量
     n_train = cal(train_loader)
     n_val = cal(val_loader)
     logger = get_logger('BraTS.log')
 
     logger.info(f'''Starting training:
+        Params:          {total_param_num}
         Epochs:          {epochs}
         Batch size:      {batch_size}
         Learning rate:   {lr}
@@ -99,9 +102,9 @@ def train_net(net, device, epochs=500, batch_size=1, lr=0.01, save_cp=True, n_cl
 
 
     best_dice = 0 # 用于记录最好的dice系数
-    # size_rates = [384, 512, 640] # 三种不同shape的图像进行训练，默认图像大小是512×512
-    size_rates = [512]
-    for epoch in range(epochs): # 每个epoch中要处理n_train的训练数据，每个训练数据要转成3种不同的size分别处理一遍
+    # size_rates = [384, 512, 640] # 三种不同shape的图像进行训练，默认图像大小是384×384
+    size_rates = [384]
+    for epoch in range(0, epochs): # 每个epoch中要处理n_train的训练数据，每个训练数据要转成3种不同的size分别处理一遍
         net.train() # 将模型转为training模式
 
         epoch_loss = 0
@@ -112,7 +115,7 @@ def train_net(net, device, epochs=500, batch_size=1, lr=0.01, save_cp=True, n_cl
                 for rate in size_rates: # 每个shape都要过一遍
                     imgs, true_masks = batch
                     trainsize = rate
-                    if rate != 512: # train_loader中已经将图像的大小改成了512×512，所以这一步实际上是不需要的
+                    if rate != trainsize: # train_loader中已经将图像的大小改变了，所以这一步实际上是不需要的
                         imgs = F.upsample(imgs, size=(trainsize, trainsize), mode='bilinear', align_corners=True) # 将图像调整到特定的大小，使用双线性插值法
                         true_masks = F.upsample(true_masks, size=(trainsize, trainsize), mode='bilinear', align_corners=True) # 将mask调整到特定的大小，使用双线性插值法
 
@@ -162,13 +165,13 @@ def get_args():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-e', '--epochs', metavar='E', type=int, default=1000,
                         help='Number of epochs', dest='epochs')
-    parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=3,
+    parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=4,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.001,
+    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0001,
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=None,
                         help='Load model from a .pth file')
-    parser.add_argument('-s', '--img_size', dest='size', type=int, default=512,
+    parser.add_argument('-s', '--img_size', dest='size', type=int, default=384,
                         help='The size of the images')
     parser.add_argument('--optimizer', type=str,
                         default='Adam', help='choosing optimizer Adam or SGD')
@@ -190,7 +193,7 @@ if __name__ == '__main__':
     net = nn.DataParallel(net, device_ids=[0]) # 启动分布式计算，将数据按batch平分到每块GPU上，将模型在每个GPU上都复制一份，专用于处理相应部分的数据
     net = net.to(device)
 
-    if args.load:
+    if args.load: # 加载模型的权重
         net.load_state_dict(
             torch.load(args.load, map_location=device)
         )
