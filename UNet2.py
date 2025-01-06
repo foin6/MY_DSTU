@@ -10,7 +10,7 @@ import torch.nn as nn
 from VRWKV.vrwkv_encoder2 import Encoder
 from VRWKV.vrwkv_decoder import VRWKV_Decoder
 from Decoders import Decoder
-from TIF import Cross_Att
+from ImgFusion.Fusion import Cross_Att
 
 groups = 32
 VRWKV_L_path= "/home/zixuwang/MyProjs/Segmentation/backup/pretrain_model/vrwkv_l_22kto1k_384.pth"
@@ -93,10 +93,10 @@ class UNet(nn.Module):
         self.change2 = Conv_block(tb * 2, dim * 2)
         self.change3 = Conv_block(tb * 4, dim * 4)
         self.change4 = Conv_block(tb * 8, dim * 8)
-        self.cross_att_1 = Cross_Att.Cross_Att(dim_s * 1, dim_l * 1)
-        self.cross_att_2 = Cross_Att.Cross_Att(dim_s * 2, dim_l * 2)
-        self.cross_att_3 = Cross_Att.Cross_Att(dim_s * 4, dim_l * 4)
-        self.cross_att_4 = Cross_Att.Cross_Att(dim_s * 8, dim_l * 8)
+        self.cross_att_1 = Cross_Att(dim_s * 1, dim_l * 1)
+        self.cross_att_2 = Cross_Att(dim_s * 2, dim_l * 2)
+        self.cross_att_3 = Cross_Att(dim_s * 4, dim_l * 4)
+        self.cross_att_4 = Cross_Att(dim_s * 8, dim_l * 8)
 
     def forward(self, x): # x.shape=[batch_size, 3, H, W] # 直接输入的是原始图像
         # 以下两个encoder是处理不同scale图像的encoder
