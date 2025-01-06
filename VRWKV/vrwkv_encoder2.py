@@ -88,10 +88,10 @@ class FlexiblePatchMerging(nn.Module):
         assert (downsample_rate & (downsample_rate - 1) == 0) and downsample_rate != 0, "downsample_rate must be a power of 2"
         self.dim = dim
         self.downsample_rate = downsample_rate
-        self.reduction1 = nn.Linear(downsample_rate**2 * dim, dim, bias=False)
-        self.relu = nn.LeakyReLU()
+        self.reduction1 = nn.Linear(downsample_rate*dim, dim, bias=False)
+        self.gelu = nn.GELU()
         self.reduction2 = nn.Linear(dim, downsample_rate*dim, bias=False)
-        self.norm1 = norm_layer(downsample_rate**2 * dim)
+        self.norm1 = norm_layer(downsample_rate*dim)
         self.norm2 = norm_layer(dim)
 
     def forward(self, x):  # [batch_size, dim, H, W]
@@ -110,14 +110,14 @@ class FlexiblePatchMerging(nn.Module):
         patches = []
         for i in range(self.downsample_rate):
             for j in range(self.downsample_rate):
-                patches.append(x[:, i::self.downsample_rate, j::self.downsample_rate, :])
-        x = torch.cat(patches, dim=-1)  # B, new_H, new_W, downsample_rate^2 * C
-        x = x.view(B, -1, self.downsample_rate**2 * C)  # B, new_H*new_W, downsample_rate^2 * C
+                patches.append(x[:, i::self.downsample_rate, j::self.downsample_rate, j*(C//self.downsample_rate):(j+1)*(C//self.downsample_rate)])
+        x = torch.cat(patches, dim=-1)  # B, new_H, new_W, downsample_rate*C
+        x = x.view(B, -1, self.downsample_rate*C)  # B, new_H*new_W, downsample_rate*C
 
-        x = self.norm1(x) # [batch_size, downsample_rate^2 * C, new_H*new_W]
+        x = self.norm1(x) # [batch_size, new_H*new_W, downsample_rate*C]
         # Reduce dimensionality
         x = self.reduction1(x)
-        x = self.relu(x)
+        x = self.gelu(x)
         x = self.norm2(x)
         x = self.reduction2(x).view(B, new_W, new_W, -1).permute(0, 3, 1, 2).contiguous()
 
@@ -165,7 +165,7 @@ if __name__ == '__main__':
     print('#### Test Case ###')
     from torch.autograd import Variable
     x = Variable(torch.rand(1, 3, 384, 384)).cuda()
-    encoder = Encoder(img_size=384, patch_size=4, in_chans=3, embed_dim=768,
+    encoder = Encoder(img_size=384, patch_size=4, in_chans=3, embed_dim=96,
                     depth=12, drop_rate=0., drop_path_rate=0.5, out_indices=(1,5,9,11), 
                     channel_gamma=1/4, shift_pixel=1, shift_mode="q_shift", 
                     init_values=None, init_mode="fancy", post_norm=False, key_norm=False, 

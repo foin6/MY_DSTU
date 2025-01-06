@@ -132,7 +132,10 @@ class VRWKV_SpatialMix(BaseModule):
     def _init_weights(self, init_mode):
         if init_mode=='fancy':
             with torch.no_grad(): # fancy init
-                ratio_0_to_1 = (self.layer_id / (self.n_layer - 1)) # 0 to 1
+                if self.n_layer == 1:
+                    ratio_0_to_1 = 1
+                else:
+                    ratio_0_to_1 = (self.layer_id / (self.n_layer - 1)) # 0 to 1
                 ratio_1_to_almost0 = (1.0 - (self.layer_id / self.n_layer)) # 1 to ~0
                 
                 # fancy time_decay
@@ -323,7 +326,7 @@ class Block(BaseModule): # 一个block包含一个完整的Time Mixing 和一个
             x = _inner_forward(x)
         return x # [batch_size, total_patch_num, embed_dim]
 
-@BACKBONES.register_module() # 将类注册到BACKBONES构建器中，使得可以通过配置文件来使用该类
+@BACKBONES.register_module(force=True) # 将类注册到BACKBONES构建器中，使得可以通过配置文件来使用该类
 class VRWKV(BaseModule):
     """
     norm w and norm u
