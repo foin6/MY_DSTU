@@ -1,2 +1,2 @@
 # MY_DSTU
-Segmentation with Dual SwinTransformer UNet
+Segmentation with Dual Vision-RWKV UNet
